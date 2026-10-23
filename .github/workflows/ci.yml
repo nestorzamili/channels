@@ -1,0 +1,65 @@
+name: CI Channels
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: channels-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality_checks:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: "1.4.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Run tests
+        run: bun test
+
+      - name: Build runtime image
+        run: docker build --tag "channels:${GITHUB_SHA:0:7}" .
+
+      - name: Verify runtime image
+        run: |
+          docker run --rm --network none --entrypoint bun "channels:${GITHUB_SHA:0:7}" --eval '
+            import assert from "node:assert/strict";
+            import fs from "node:fs";
+            import { Client } from "zaileys";
+
+            assert.equal(process.env.NODE_ENV, "production");
+            assert.notEqual(process.getuid(), 0);
+            assert.deepEqual(fs.readdirSync("/app").sort(), [".zaileys", "dist", "node_modules"]);
+            assert.deepEqual(fs.readdirSync("/app/dist").sort(), ["faq.data.json", "index.js"]);
+            for (const dependency of ["pino-pretty", "typescript", "@types/bun"]) {
+              assert.equal(fs.existsSync(`/app/node_modules/${dependency}`), false);
+            }
+            const data = await Bun.file("/app/dist/faq.data.json").json();
+            assert.ok(Array.isArray(data));
+            assert.equal(new Client({ sessionId: "image-check", autoConnect: false, statusLog: false }).state, "idle");
+            const result = Bun.spawnSync([process.execPath, "/app/dist/index.js"], {
+              env: { ...process.env, WA_SESSION_ID: "invalid/session", LOG_FORMAT: "pretty" },
+            });
+            assert.equal(result.exitCode, 1);
+            assert.equal(JSON.parse(result.stderr.toString()).event, "app.startup_failed");
+            console.log("Runtime image verified");
+          '

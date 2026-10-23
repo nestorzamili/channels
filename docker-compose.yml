@@ -1,0 +1,18 @@
+services:
+  channels:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/nestorzamili/channels:${IMAGE_TAG:?Set IMAGE_TAG to the 7-character commit SHA}
+    container_name: channels
+    restart: on-failure
+    stop_grace_period: 30s
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - channels_session:/app/.zaileys
+
+volumes:
+  channels_session:

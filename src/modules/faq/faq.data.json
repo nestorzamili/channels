@@ -1,0 +1,87 @@
+[
+  {
+    "id": "general",
+    "title": "Informasi Umum & Jam Operasional",
+    "label": "Informasi Umum",
+    "questions": [
+      {
+        "id": "gen-hours",
+        "label": "Jam Operasional",
+        "question": "Kapan jam operasional layanan?",
+        "answer": "Jam operasional layanan kami adalah sebagai berikut:\n\n• *Senin – Jumat:* 08.00 – 21.00 WIB\n• *Sabtu – Minggu:* 09.00 – 18.00 WIB\n• *Hari Libur Nasional:* Tetap beroperasi (layanan terbatas)\n\nPesan yang masuk di luar jam operasional tetap tercatat oleh sistem dan akan ditindaklanjuti pada jam kerja berikutnya."
+      },
+      {
+        "id": "gen-location",
+        "label": "Lokasi Kantor",
+        "question": "Di mana lokasi kantor / cabang utama?",
+        "answer": "Kantor utama kami berlokasi di:\nJl. Jenderal Sudirman No. 123, Jakarta Selatan.\n\nAnda dapat mengunjungi kantor kami pada jam operasional.\n\n*Google Maps:* https://maps.google.com"
+      },
+      {
+        "id": "gen-channels",
+        "label": "Channel Komunikasi",
+        "question": "Channel komunikasi apa saja yang tersedia?",
+        "answer": "Saat ini kami melayani pelanggan melalui saluran resmi berikut:\n\n1. *WhatsApp* (nomor ini)\n2. *Telegram & Discord* (segera hadir)\n3. *Email:* support@example.com"
+      }
+    ]
+  },
+  {
+    "id": "order",
+    "title": "Pemesanan & Layanan",
+    "questions": [
+      {
+        "id": "ord-how",
+        "label": "Cara Pemesanan",
+        "question": "Bagaimana cara melakukan pemesanan?",
+        "answer": "Berikut langkah-langkah untuk melakukan pemesanan:\n\n1. Pilih produk atau paket layanan melalui katalog di situs web kami.\n2. Lengkapi rincian pesanan dan pilih metode pembayaran.\n3. Lakukan konfirmasi pembayaran agar pesanan Anda dapat segera kami proses.\n\n*Katalog:* https://example.com"
+      },
+      {
+        "id": "ord-status",
+        "label": "Status Pesanan",
+        "question": "Bagaimana cara mengecek status pesanan saya?",
+        "answer": "Anda dapat memeriksa status pesanan menggunakan *Nomor Invoice* melalui halaman pelacakan kami, atau menghubungi tim layanan pelanggan dengan menyertakan nomor pesanan Anda."
+      },
+      {
+        "id": "ord-cancel",
+        "label": "Ubah/Batal Pesanan",
+        "question": "Apakah pesanan yang sudah dibuat bisa diubah/dibatalkan?",
+        "answer": "Ketentuan perubahan dan pembatalan pesanan:\n\n• Pesanan yang *belum dibayar* dapat diubah atau dibatalkan kapan saja.\n• Pesanan yang *sudah dibayar namun belum diproses* dapat diajukan perubahan melalui layanan pelanggan maksimal 1 jam setelah pembayaran."
+      }
+    ]
+  },
+  {
+    "id": "payment",
+    "title": "Pembayaran & Promo",
+    "questions": [
+      {
+        "id": "pay-methods",
+        "label": "Metode Pembayaran",
+        "question": "Metode pembayaran apa saja yang didukung?",
+        "answer": "Kami menerima pembayaran melalui metode resmi berikut:\n\n• *QRIS* (GoPay, OVO, DANA, ShopeePay, dan Mobile Banking)\n• *Virtual Account* (BCA, Mandiri, BNI, dan BRI)\n• *Transfer Bank Manual* ke rekening resmi perusahaan"
+      },
+      {
+        "id": "pay-promo",
+        "label": "Promo Pengguna Baru",
+        "question": "Apakah ada kode promo untuk pengguna baru?",
+        "answer": "Gunakan kode voucher *WELCOME10* pada saat pembayaran untuk mendapatkan potongan harga sebesar 10% khusus transaksi pertama Anda."
+      }
+    ]
+  },
+  {
+    "id": "support",
+    "title": "Kendala Teknis & Garansi",
+    "questions": [
+      {
+        "id": "sup-warranty",
+        "label": "Klaim Garansi",
+        "question": "Bagaimana prosedur klaim garansi?",
+        "answer": "Prosedur pengajuan klaim garansi:\n\n1. Siapkan Nomor Invoice atau bukti pembelian resmi.\n2. Lampirkan dokumentasi berupa foto atau video yang menunjukkan kendala.\n3. Pilih *Hubungi Admin* pada menu di bawah untuk menghubungi tim layanan pelanggan kami."
+      },
+      {
+        "id": "sup-refund",
+        "label": "Pengembalian Dana",
+        "question": "Berapa lama proses pengembalian dana (refund)?",
+        "answer": "Setelah pengajuan pengembalian dana (refund) disetujui, dana akan dikembalikan ke rekening atau metode pembayaran asal dalam waktu *1–3 hari kerja*."
+      }
+    ]
+  }
+]

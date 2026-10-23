@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Zaileys WhatsApp Auth & Store
+.zaileys/
+*.db
+*.db-wal
+*.db-shm
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build & Logs
+dist/
+*.log
+.DS_Store

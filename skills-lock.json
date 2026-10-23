@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "zaileys": {
+      "source": "zeative/zaileys",
+      "sourceType": "github",
+      "skillPath": "skills/zaileys/SKILL.md",
+      "computedHash": "6df2486e6f48bb8ec8d1060b959c3e9874169edce9f1c629e92790a8a520ff5e"
+    }
+  }
+}
