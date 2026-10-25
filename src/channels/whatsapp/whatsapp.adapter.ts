@@ -7,6 +7,7 @@ import {
 import type { ChannelAdapter } from '../../core/channel.interface.ts'
 import type { MessageRouter } from '../../core/router.ts'
 import { inboundLogContext, logger } from '../../core/logger.ts'
+import fs from 'node:fs'
 import type {
   OutboundButtonItem,
   OutboundButtonsPayload,
@@ -36,6 +37,8 @@ interface MenuState {
 
 const MAX_MENU_STATE_ENTRIES = 1000
 const MAX_HANDLED_IDS = 500
+const STATE_DIR = '/app/.zaileys/state'
+const STATE_WRITE_DEBOUNCE_MS = 3_000
 
 function isNonDirectJid(jid: string): boolean {
   return (
@@ -252,14 +255,18 @@ export function formatNumberedListMessage(
   }
 }
 
+const MAX_REPLY_BUTTONS = 3
+const MAX_ACTION_BUTTONS = 10
+
 export function formatNumberedButtonsMessage(
   payload: OutboundButtonsPayload,
-): { text: string; options: NumberedMenuOption[] } {
+): { text: string; nativeButtons: OutboundButtonItem[]; options: NumberedMenuOption[] } {
   const seenReplyIds = new Set<string>()
-  const safeButtons: OutboundButtonItem[] = []
+  const replyButtons: OutboundButtonItem[] = []
+  const actionButtons: OutboundButtonItem[] = []
 
   for (const btn of payload.buttons) {
-    if (safeButtons.length >= 10) break
+    if (actionButtons.length >= MAX_ACTION_BUTTONS) break
     if (!btn.text.trim()) continue
 
     if (!btn.type || btn.type === 'reply') {
@@ -268,11 +275,15 @@ export function formatNumberedButtonsMessage(
       seenReplyIds.add(replyId)
     }
 
-    safeButtons.push(btn)
+    if (!btn.type || btn.type === 'reply') {
+      replyButtons.push(btn)
+    } else {
+      actionButtons.push(btn)
+    }
   }
 
-  if (safeButtons.length === 0) {
-    return { text: payload.text, options: [] }
+  if (replyButtons.length === 0 && actionButtons.length === 0) {
+    return { text: payload.text, nativeButtons: [], options: [] }
   }
 
   const lines: string[] = []
@@ -290,7 +301,7 @@ export function formatNumberedButtonsMessage(
   const options: NumberedMenuOption[] = []
   const optionLines: string[] = []
 
-  for (const btn of safeButtons) {
+  for (const btn of actionButtons) {
     const label = btn.text.trim()
     if (btn.type === 'url') {
       actionLinks.push(`*${label}:* ${btn.url.trim()}`)
@@ -305,13 +316,21 @@ export function formatNumberedButtonsMessage(
       actionLinks.push(`*${label}:* ${btn.code.trim()}`)
       continue
     }
+  }
 
+  for (const btn of replyButtons) {
+    const label = btn.text.trim()
     options.push({
-      id: btn.id.trim(),
+      id: (btn as { id: string }).id.trim(),
       title: label,
       type: 'button',
     })
-    optionLines.push(`${options.length}. ${label}`)
+  }
+
+  const nativeButtons = replyButtons.slice(0, MAX_REPLY_BUTTONS)
+
+  for (const [index, option] of options.entries()) {
+    optionLines.push(`${index + 1}. ${option.title}`)
   }
 
   if (actionLinks.length > 0) {
@@ -329,7 +348,38 @@ export function formatNumberedButtonsMessage(
 
   return {
     text: lines.join('\n\n'),
+    nativeButtons,
     options,
+  }
+}
+
+interface PersistedAdapterState {
+  menuState: Array<[string, MenuState]>
+  handledInteractionMsgIds: string[]
+}
+
+function readPersistedState(stateDir: string | undefined): PersistedAdapterState | null {
+  if (!stateDir) return null
+  try {
+    const raw = fs.readFileSync(new URL('adapter-state.json', `file://${stateDir}/`), 'utf8')
+    const parsed = JSON.parse(raw) as PersistedAdapterState
+    if (!Array.isArray(parsed.menuState) || !Array.isArray(parsed.handledInteractionMsgIds)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writePersistedState(
+  stateDir: string | undefined,
+  state: PersistedAdapterState,
+): void {
+  if (!stateDir) return
+  try {
+    fs.mkdirSync(stateDir, { recursive: true })
+    fs.writeFileSync(new URL('adapter-state.json', `file://${stateDir}/`), JSON.stringify(state))
+  } catch {
+    return
   }
 }
 
@@ -338,13 +388,47 @@ export class WhatsAppAdapter implements ChannelAdapter {
   private client: Client | null = null
   private readonly options: WhatsAppAdapterOptions
   private readonly router: MessageRouter
-  private readonly menuState = new Map<string, MenuState>()
-  private readonly handledInteractionMsgIds = new Set<string>()
+  private menuState = new Map<string, MenuState>()
+  private handledInteractionMsgIds = new Set<string>()
   private readonly log = logger.child({ component: 'whatsapp' })
+
+  private readonly stateDir: string | undefined = process.env.ADAPTER_STATE_DIR || STATE_DIR
+  private stateWriteTimer: ReturnType<typeof setTimeout> | null = null
+  private stopped = false
 
   constructor(options: WhatsAppAdapterOptions, router: MessageRouter) {
     this.options = options
     this.router = router
+    const persisted = readPersistedState(this.stateDir)
+    if (persisted) {
+      this.menuState = new Map(persisted.menuState.slice(-MAX_MENU_STATE_ENTRIES))
+      this.handledInteractionMsgIds = new Set(
+        persisted.handledInteractionMsgIds.slice(-MAX_HANDLED_IDS),
+      )
+    }
+  }
+
+  private scheduleStatePersist(): void {
+    if (!this.stateDir || this.stopped) return
+    if (this.stateWriteTimer) clearTimeout(this.stateWriteTimer)
+    this.stateWriteTimer = setTimeout(() => {
+      this.stateWriteTimer = null
+      writePersistedState(this.stateDir, {
+        menuState: [...this.menuState],
+        handledInteractionMsgIds: [...this.handledInteractionMsgIds],
+      })
+    }, STATE_WRITE_DEBOUNCE_MS)
+  }
+
+  private flushStatePersist(): void {
+    if (this.stateWriteTimer) {
+      clearTimeout(this.stateWriteTimer)
+      this.stateWriteTimer = null
+    }
+    writePersistedState(this.stateDir, {
+      menuState: [...this.menuState],
+      handledInteractionMsgIds: [...this.handledInteractionMsgIds],
+    })
   }
 
   async start(): Promise<void> {
@@ -555,6 +639,8 @@ export class WhatsAppAdapter implements ChannelAdapter {
   }
 
   async stop(): Promise<void> {
+    this.stopped = true
+    this.flushStatePersist()
     if (!this.client) return
     const current = this.client
     this.client = null
@@ -570,12 +656,19 @@ export class WhatsAppAdapter implements ChannelAdapter {
     chatId: string,
     payload: OutboundButtonsPayload,
   ): Promise<void> {
-    const { buttons, ...content } = payload
+    const { nativeButtons, ...content } = formatNumberedButtonsMessage(payload)
     await this.sendMenu(
       chatId,
-      formatNumberedButtonsMessage(payload),
+      { text: content.text, options: content.options },
       async (client, jid) => {
-        await client.send(jid).buttons(buttons, content)
+        if (nativeButtons.length > 0) {
+          await client.send(jid).buttons(nativeButtons, {
+            title: payload.title,
+            subtitle: payload.subtitle,
+            text: payload.text,
+            footer: payload.footer,
+          })
+        }
       },
     )
   }
@@ -647,6 +740,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     }
     this.menuState.set(chatId, state)
+    this.scheduleStatePersist()
   }
 
   public resolveMenuSelection(
@@ -673,7 +767,10 @@ export class WhatsAppAdapter implements ChannelAdapter {
   }
 
   private markInteractionHandled(msgId: string | null | undefined): boolean {
-    if (!msgId) return true
+    if (!msgId) {
+      this.log.warn({ event: 'whatsapp.interaction_missing_id' }, 'Interaction without message ID skipped')
+      return false
+    }
     if (this.handledInteractionMsgIds.has(msgId)) return false
     if (this.handledInteractionMsgIds.size >= MAX_HANDLED_IDS) {
       const oldest = this.handledInteractionMsgIds.values().next().value
@@ -682,6 +779,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     }
     this.handledInteractionMsgIds.add(msgId)
+    this.scheduleStatePersist()
     return true
   }
 

@@ -567,3 +567,77 @@ describe('menu modes', () => {
     })
   }
 })
+
+describe('review fix regressions', () => {
+  test('native send caps reply buttons at three while keeping all numbered options', async () => {
+    const { adapter, client } = await createSetup('native')
+    const sender = mockSender(client)
+    await adapter.sendButtons(CHAT_ID, {
+      text: 'Pilih menu',
+      buttons: [
+        { type: 'reply', id: 'opt1', text: 'Satu' },
+        { type: 'reply', id: 'opt2', text: 'Dua' },
+        { type: 'reply', id: 'opt3', text: 'Tiga' },
+        { type: 'reply', id: 'opt4', text: 'Empat' },
+        { type: 'reply', id: 'opt5', text: 'Lima' },
+      ],
+    })
+    expect(sender.buttons).toHaveBeenCalledTimes(1)
+    const [nativeButtons] = sender.buttons.mock.calls[0]!
+    expect((nativeButtons as unknown[]).length).toBe(3)
+
+    const chosen = adapter.resolveMenuSelection(CHAT_ID, '5')
+    expect(chosen?.id).toBe('opt5')
+  })
+
+  test('interactions without a message id are skipped', async () => {
+    const { client, routeInteraction } = await createSetup('native')
+    client.emit('button-click', {
+      key: { remoteJid: CHAT_ID, id: undefined },
+      sender: { jid: CHAT_ID, pn: CHAT_ID },
+      buttonId: 'faq:home',
+      buttonText: 'Semua Topik',
+      timestamp: Date.now(),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(routeInteraction).not.toHaveBeenCalled()
+  })
+})
+
+describe('adapter state persistence', () => {
+  test('restarted adapter does not reprocess a handled interaction', async () => {
+    process.env.ADAPTER_STATE_DIR = `/tmp/channels-test-state-${Date.now()}`
+    const first = await createSetup('native')
+    first.client.emit('button-click', {
+      key: { remoteJid: CHAT_ID, id: 'persist-1' },
+      sender: { jid: CHAT_ID, pn: CHAT_ID },
+      buttonId: 'faq:home',
+      buttonText: 'Semua Topik',
+      timestamp: Date.now(),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(first.routeInteraction).toHaveBeenCalledTimes(1)
+    await first.adapter.stop()
+
+    const second = await createSetup('native')
+    second.client.emit('button-click', {
+      key: { remoteJid: CHAT_ID, id: 'persist-1' },
+      sender: { jid: CHAT_ID, pn: CHAT_ID },
+      buttonId: 'faq:home',
+      buttonText: 'Semua Topik',
+      timestamp: Date.now(),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(second.routeInteraction).not.toHaveBeenCalled()
+  })
+
+  test('corrupt state file starts clean', async () => {
+    const dir = `/tmp/channels-test-state-${Date.now()}-corrupt`
+    process.env.ADAPTER_STATE_DIR = dir
+    await import('node:fs').then((fs) => fs.mkdirSync(dir, { recursive: true }))
+    await import('node:fs').then((fs) => fs.writeFileSync(`${dir}/adapter-state.json`, '{broken'))
+    const setup = await createSetup('native')
+    expect(setup.adapter).toBeDefined()
+    await setup.adapter.stop()
+  })
+})
