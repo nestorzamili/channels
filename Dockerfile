@@ -30,4 +30,5 @@ VOLUME ["/app/.zaileys"]
 
 USER bun
 
+
 CMD ["bun", "dist/index.js"]
