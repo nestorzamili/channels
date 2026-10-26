@@ -46,16 +46,10 @@ bun run typecheck
 bun run doctor
 ```
 
-Images are published to GHCR with the seven-character commit SHA as their only tag. Set `IMAGE_TAG` to the published commit, then link WhatsApp interactively before starting the service:
+## Environment
 
-```bash
-export IMAGE_TAG="$(git rev-parse --short=7 HEAD)"
-docker compose pull
-docker compose run --rm channels
-docker compose up -d
-```
-
-Use `docker compose build` for a local build. The runtime image contains the production bundle, FAQ JSON, and production dependencies; sessions remain in a named volume.
+- Local: [`.env.example`](./.env.example)
+- Production: GitHub Environment `production` secret `ENV_FILE` (full runtime env)
 
 ## CI/CD
 
@@ -64,7 +58,7 @@ Use `docker compose build` for a local build. The runtime image contains the pro
 
 Environment `production` secrets only (no Variables): `SSH_CONFIG`, `GHCR_USERNAME`, `GHCR_TOKEN`, `ENV_FILE`.
 
-VM: Docker, network `proxy`, named volume `channels_session` mounted to `/app/.zaileys`.
+VM (sekali): Docker, network `proxy`, named volume `channels_session` mounted to `/app/.zaileys`.
 
 ## Coming Soon
 
