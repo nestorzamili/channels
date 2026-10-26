@@ -57,6 +57,15 @@ docker compose up -d
 
 Use `docker compose build` for a local build. The runtime image contains the production bundle, FAQ JSON, and production dependencies; sessions remain in a named volume.
 
+## CI/CD
+
+- PR → [`ci.yml`](./.github/workflows/ci.yml) (typecheck, tests, and Alpine runtime image verification)
+- main → [`deploy.yml`](./.github/workflows/deploy.yml) via [gha-workflows](https://github.com/nestorzamili/gha-workflows)
+
+Environment `production` secrets only (no Variables): `SSH_CONFIG`, `GHCR_USERNAME`, `GHCR_TOKEN`, `ENV_FILE`.
+
+VM: Docker, network `proxy`, named volume `channels_session` mounted to `/app/.zaileys`.
+
 ## Coming Soon
 
 - WhatsApp Cloud API integration.

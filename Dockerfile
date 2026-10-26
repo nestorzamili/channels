@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM oven/bun:1.4.3-slim AS build
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.3-alpine AS build
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN bun install --frozen-lockfile --production \
 COPY src ./src
 RUN bun run build
 
-FROM oven/bun:1.4.3-slim AS runtime
+FROM oven/bun:1.4.3-alpine AS runtime
 
 LABEL org.opencontainers.image.title="Channels"
 LABEL org.opencontainers.image.source="https://github.com/nestorzamili/channels"
